@@ -29,6 +29,14 @@ ORDEM_FAIXA_ETARIA = ["60+", "55 a 59", "50 a 54", "45 a 49", "40 a 44", "35 a 3
 ORDEM_GERACAO = ["Geração Alpha", "Tradicionalistas", "Baby Boomers", "Geração X", "Millennials", "Geração Z"]
 ORDEM_RACA = ["Branca", "Parda", "Preta", "Amarela", "Não Informada"]
 NAO_INFORMADO = "Não informado"
+# nível de gerenciamento com as variações juntas (mesmo agrupamento do Headcount Total e da Aderência)
+NIVEL_GERENCIAMENTO = {"Gerente de Vendas": "Gerente", "Gerente Executivo de Obras": "Gerente Executivo",
+                       "Gerente Executivo Estadual de Obras": "Gerente Executivo", "Coordenador de Obras": "Coordenador/Especialista",
+                       "Diretor de Obras": "Diretor"}
+ORDEM_NIVEL = ["Operacional", "Pilotos", "Staff", "Supervisor/Advogado/Engenheiro", "Coordenador/Especialista",
+               "Gerente", "Gerente Executivo", "Diretor", "Conselheiro"]
+ORDEM_FRENTE = ["Obras", "Corporativo", "Comercial"]
+NEGRAS = {"Preta", "Parda"}
 
 
 def faixa_tempo_casa(dias) -> str | None:
@@ -61,6 +69,9 @@ def preparar(base: pd.DataFrame) -> pd.DataFrame:
     for c in ("diretoria", "area", "nome_centro_custo", "familia_cargo", "sexo", "cidade"):
         df[c] = df[c].fillna(NAO_INFORMADO)
     df["raca_cor"] = df["raca_cor"].fillna("Não Informada")
+    df["nivel"] = df["nivel_gerenciamento"].replace(NIVEL_GERENCIAMENTO).fillna(NAO_INFORMADO)
+    for c in ("frente", "uf", "vinculo"):
+        df[c] = df[c].fillna(NAO_INFORMADO)
     return df
 
 
@@ -136,6 +147,96 @@ def kpis(df: pd.DataFrame, d: date, faixas_tempo_casa: list[str] | None = None) 
         "genero_predominante": "—" if not len(atual) else ("Masculino" if masc >= fem else "Feminino"),
         "raca_predominante": moda(atual["raca_cor"]), "geracao_predominante": moda(atual["geracao"]),
     }
+
+
+def _distribuicao(serie: pd.Series, ordem: list[str]) -> list[tuple[str, int, float]]:
+    """[(valor, pessoas, % do grupo)] na ordem dada (valores fora da ordem vão para o fim)."""
+    vc = serie.value_counts()
+    total = int(vc.sum())
+    chaves = [o for o in ordem if o in vc.index] + [v for v in vc.index if v not in ordem]
+    return [(k, int(vc[k]), vc[k] / total) for k in chaves] if total else []
+
+
+def retrato_por_sexo(a: pd.DataFrame) -> dict[str, dict]:
+    """Como é cada sexo no quadro: pessoas, % do quadro, idade média, tempo de casa médio e a
+    composição por raça/cor e por geração (em % do próprio grupo)."""
+    total = len(a)
+    out = {}
+    for sexo in ("Masculino", "Feminino"):
+        g = a[a["sexo"] == sexo]
+        out[sexo] = {
+            "pessoas": len(g), "pct_quadro": len(g) / total if total else None,
+            "idade_media": idade_media_texto(g["idade"]), "tempo_casa": tempo_casa_texto(g["tempo_casa_dias"]),
+            "raca": _distribuicao(g["raca_cor"], ORDEM_RACA),
+            "geracao": _distribuicao(g["geracao"], list(reversed(ORDEM_GERACAO))),
+        }
+    return out
+
+
+def _pct_mulheres_negras(g: pd.DataFrame) -> tuple[float | None, float | None]:
+    n = len(g)
+    return ((g["sexo"] == "Feminino").mean() if n else None, g["raca_cor"].isin(NEGRAS).mean() if n else None)
+
+
+def retrato_por_frente(a: pd.DataFrame) -> dict[str, dict]:
+    """Como é cada frente (Obras, Corporativo, Comercial): pessoas, % do quadro, idade e tempo de casa
+    médios e a composição por sexo, raça/cor e geração."""
+    total, out = len(a), {}
+    for frente in [f for f in ORDEM_FRENTE if f in set(a["frente"])]:
+        g = a[a["frente"] == frente]
+        out[frente] = {"pessoas": len(g), "pct_quadro": len(g) / total if total else None,
+                       "idade_media": idade_media_texto(g["idade"]), "tempo_casa": tempo_casa_texto(g["tempo_casa_dias"]),
+                       "sexo": _distribuicao(g["sexo"], ["Masculino", "Feminino", NAO_INFORMADO]),
+                       "raca": _distribuicao(g["raca_cor"], ORDEM_RACA),
+                       "geracao": _distribuicao(g["geracao"], list(reversed(ORDEM_GERACAO)))}
+    return out
+
+
+def diversidade_por_nivel(a: pd.DataFrame) -> pd.DataFrame:
+    """% de mulheres e de pretas e pardas em cada nível de gerenciamento (do operacional ao conselho)."""
+    linhas = []
+    for nivel, g in a.groupby("nivel"):
+        pm, pn = _pct_mulheres_negras(g)
+        linhas.append({"nivel": nivel, "pessoas": len(g), "pct_mulheres": pm, "pct_negras": pn})
+    t = pd.DataFrame(linhas, columns=["nivel", "pessoas", "pct_mulheres", "pct_negras"])
+    ordem = [n for n in ORDEM_NIVEL if n in set(t["nivel"])] + sorted(set(t["nivel"]) - set(ORDEM_NIVEL))
+    return t.set_index("nivel").reindex(ordem).reset_index()
+
+
+def evolucao_diversidade(df: pd.DataFrame, ini: date, fim: date, faixas_tempo_casa: list[str] | None = None) -> pd.DataFrame:
+    """% de mulheres e de pretas e pardas no fim de cada mês do período."""
+    linhas = []
+    for mes in meses_entre(ini, fim):
+        a = ativos_em(df, min(_fim_mes(mes), fim), faixas_tempo_casa)
+        pm, pn = _pct_mulheres_negras(a)
+        linhas.append({"periodo": mes, "pessoas": len(a), "pct_mulheres": pm, "pct_negras": pn,
+                       "mulheres": int((a["sexo"] == "Feminino").sum()), "homens": int((a["sexo"] == "Masculino").sum()),
+                       "negras": int(a["raca_cor"].isin(NEGRAS).sum())})
+    return pd.DataFrame(linhas, columns=["periodo", "pessoas", "pct_mulheres", "pct_negras", "mulheres", "homens", "negras"])
+
+
+def entrantes(df: pd.DataFrame, ini: date, fim: date) -> pd.DataFrame:
+    """Uma linha por pessoa admitida no período (a admissão mais recente dentro dele), com a idade na
+    admissão e se ainda está ativa na data final."""
+    e = df[(df["data_admissao"] >= ini) & (df["data_admissao"] <= fim)]
+    e = e.sort_values(["pessoa", "data_admissao"], ascending=[True, False]).drop_duplicates("pessoa").copy()
+    e["idade_admissao"] = e["idade_ref"] - [(r - x).days / 365.25 for r, x in zip(e["data_referencia"], e["data_admissao"])]
+    e["ativo_fim"] = e["data_desligamento"].isna() | (e["data_desligamento"] > fim)
+    return e
+
+
+def comparar_entrantes(e: pd.DataFrame, a: pd.DataFrame) -> dict:
+    """Perfil de quem entrou no período x o quadro na data final."""
+    pm_e, pn_e = _pct_mulheres_negras(e)
+    pm_a, pn_a = _pct_mulheres_negras(a)
+    comp = {}
+    for campo, ordem in (("sexo", ["Masculino", "Feminino", NAO_INFORMADO]), ("raca_cor", ORDEM_RACA),
+                         ("geracao", list(reversed(ORDEM_GERACAO)))):
+        comp[campo] = {"Admitidos no período": _distribuicao(e[campo], ordem), "Quadro na data final": _distribuicao(a[campo], ordem)}
+    return {"admitidos": len(e), "ainda_ativos": int(e["ativo_fim"].sum()) if len(e) else 0,
+            "pct_mulheres": pm_e, "pct_mulheres_quadro": pm_a, "pct_negras": pn_e, "pct_negras_quadro": pn_a,
+            "idade_admissao": idade_media_texto(e["idade_admissao"]), "idade_quadro": idade_media_texto(a["idade"]),
+            "composicao": comp}
 
 
 def contagem(a: pd.DataFrame, coluna: str, ordem: list[str] | None = None) -> pd.DataFrame:

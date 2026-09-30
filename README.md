@@ -48,3 +48,11 @@ ver `.streamlit/secrets.toml.example`.
 Conferência (28/09/2026, referência 27/09): headcount total e da Diretoria Comercial, headcount por
 diretoria e ausência de duplicidade batem com a régua do relatório de validação (mesmos 1.520 do
 painel Turnover).
+
+## Padrão visual atualizado (30/09/2026)
+
+Login padrão da Central (card único, adaptável a celular), título em Nunito com selos de "Atualizado em" e dos filtros aplicados (vão junto num print/PDF), cards com o recorte em seta da marca, quatro seções (quadro na data final, evolução, idade/geração/tempo de casa, onde estão) e impressão em A4 deitada. Mapa com bolhas semitransparentes, como no Headcount Total. Cálculos sem mudança.
+
+## Páginas e visuais novos (30/09/2026)
+
+Quatro páginas na barra lateral (st.navigation): **Visão geral** (cards, retrato de cada gênero com persona, idade/geração/tempo de casa, diretorias/áreas/mapa), **Diversidade** (% de mulheres e de pretas e pardas por nível de gerenciamento, cards de liderança e retrato de cada frente Obras/Corporativo/Comercial), **Evolução** (cards de variação no período — headcount, homens, mulheres, pretas e pardas, em número e % — headcount por sexo e % de mulheres e de pretas e pardas mês a mês) e **Quem está entrando** (perfil dos admitidos no período x quadro). Filtros novos: Frente, Nível (variações agrupadas), UF e Vínculo — migração `_neon/migrations/020_demograficos_diversidade.sql` acrescenta nível, frente, UF e vínculo em `core.v_demografico_base`. Liderança = coordenação para cima.
