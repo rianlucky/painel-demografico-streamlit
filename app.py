@@ -416,7 +416,7 @@ def pagina_geral() -> None:
     with c2:
         pa, pb = k["pct_feminino"], k["pct_feminino_anterior"]
         dif = (pa - pb) * 100 if pa is not None and pb is not None else 0
-        pp.kpi("% Feminino", _pct(pa), "Estável" if abs(dif) < 0.05 else f"{'▲' if dif > 0 else '▼'} {abs(dif):.1f} pp vs mês ant.".replace(".", ","),
+        pp.kpi("% Feminino", _pct(pa), "Estável" if abs(dif) < 0.05 else f"{'▲' if dif > 0 else '▼'} {abs(dif):.1f}".replace(".", ",") + " pp vs mês ant.",
                VERDE if dif >= 0.05 else VERMELHO if dif <= -0.05 else CINZA)
     with c3:
         pp.kpi("Tempo de casa médio", k["tempo_casa"], "média de permanência", CINZA)
