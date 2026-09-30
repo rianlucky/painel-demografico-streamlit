@@ -36,6 +36,8 @@ NIVEL_GERENCIAMENTO = {"Gerente de Vendas": "Gerente", "Gerente Executivo de Obr
 ORDEM_NIVEL = ["Operacional", "Pilotos", "Staff", "Supervisor/Advogado/Engenheiro", "Coordenador/Especialista",
                "Gerente", "Gerente Executivo", "Diretor", "Conselheiro"]
 ORDEM_FRENTE = ["Obras", "Corporativo", "Comercial"]
+# liderança = coordenação para cima, sem o Conselho (mesma regra do Equidade, decisão de 30/09/2026)
+NIVEIS_LIDERANCA = {"Coordenador/Especialista", "Gerente", "Gerente Executivo", "Diretor"}
 NEGRAS = {"Preta", "Parda"}
 
 

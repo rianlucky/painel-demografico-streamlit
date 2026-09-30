@@ -32,8 +32,9 @@ CORES_SEXO = {"Masculino": AZUL, "Feminino": AMARELO, m.NAO_INFORMADO: CINZA}
 CORES_RACA = {"Branca": "#A8C5D0", "Parda": "#4A8FA8", "Preta": AZUL, "Amarela": AMARELO, "Não Informada": VERMELHO}
 MESES_PT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 SEM_DADOS = "Sem pessoas no filtro selecionado."
-AJUDA_LIDERANCA = ("Liderança = níveis de coordenação para cima: Coordenador/Especialista, Gerente, Gerente Executivo, "
-                   "Diretor e Conselho. Vermelho quando a participação na liderança fica 5 pontos ou mais abaixo da do quadro.")
+AJUDA_LIDERANCA = ("Liderança = níveis de coordenação para cima: Coordenador/Especialista, Gerente, Gerente Executivo e "
+                   "Diretor (o Conselho fica fora, como no Equidade). Vermelho quando a participação na liderança fica 5 pontos "
+                   "ou mais abaixo da do quadro.")
 
 st.set_page_config(page_title="Dados Demográficos · Pacaembu Construtora", page_icon=str(ASSETS / "icone-demograficos.png"), layout="wide")
 
@@ -469,7 +470,7 @@ def pagina_diversidade() -> None:
         st.info(SEM_DADOS, icon=":material/info:")
         st.stop()
     pm, pn = m._pct_mulheres_negras(ativos)
-    lid = ativos[ativos["nivel"].isin(m.ORDEM_NIVEL[m.ORDEM_NIVEL.index("Coordenador/Especialista"):])]
+    lid = ativos[ativos["nivel"].isin(m.NIVEIS_LIDERANCA)]
     lm, ln = m._pct_mulheres_negras(lid)
     pp.secao("Diversidade na liderança")
     c = st.columns(4)
